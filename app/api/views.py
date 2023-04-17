@@ -10,7 +10,7 @@ import warnings
 from threading import Thread
 
 import torch.optim
-from flask import request, current_app, jsonify, g
+from flask import request, current_app, jsonify, g, session
 from matplotlib import pyplot as plt
 from torch import nn
 
@@ -23,10 +23,12 @@ from app.model.models import TrainSetModel, TestSetModel
 from app.model.test_dataloader import test_data_loader
 from app.model.train_dataloader import train_data_loader
 
+status = False
 
 def train_model(batch_size, learning_rate, epochs, app_context):
     with app_context:
-        current_app.status = True
+        global status
+        status = True
         warnings.simplefilter(action='ignore', category=RuntimeWarning)
         torch.manual_seed(2020)
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -73,27 +75,27 @@ def train_model(batch_size, learning_rate, epochs, app_context):
         plt.ylabel('accuracy')
         plt.title('testing set accuracy')
         plt.savefig(os.path.join(current_app.config['IMG_DIR'], 'testing-set-accuracy.png'))
-        current_app.status = False
+        status = False
 
 
 @api.route('/train', methods=['POST'])
 def train():
     rep_data = request.json
     batch_size = rep_data.get('batchSize')
-    learning_ate = rep_data.get('learningRate')
-    epochs = rep_data.get('epochs')
-
-    if hasattr(current_app, 'status') and current_app.status:
+    learning_rate = rep_data.get('learningRate')
+    epochs = rep_data.get('epoch')
+    if status:
         return jsonify({'code': -1, 'message': 'The model is in training'})
     else:
         try:
-            t = Thread(target=train_model, args=(batch_size, learning_ate, epochs, current_app.app_context()))
+            t = Thread(target=train_model, args=(float(batch_size), float(learning_rate),
+                                                 float(epochs), current_app.app_context()))
             t.start()
         except Exception as e:
             print(e)
-            return jsonify({'code': -1, 'message': 'Error'})
+            return jsonify({'code': -1, 'message': 'Error', 'data': status})
         else:
-            return jsonify({'code': '0000', 'message': 'Success'})
+            return jsonify({'code': '0000', 'message': 'Success', 'data': status})
 
 
 @api.route('/get-train-result')
@@ -102,14 +104,15 @@ def get_train_result():
 
     :return:
     """
-    if not current_app.status:
-        return {'code': '0000', 'message': 'Success', 'data': current_app.status}
+    data = {'status': status}
+    if status:
+        return {'code': '0000', 'message': 'Success', 'data': data}
     else:
-        data = {
+        data.update({
             'avgLoss': '/static/img/avg-loss.png',
             'trainPng': '/static/img/testing-set-accuracy.png',
             'testPng': '/static/img/training-set-accuracy.png'
-        }
+        })
         return {'code': '0000', 'message': 'Success', 'data': data}
 
 

@@ -18,6 +18,7 @@ class BaseConfig:
     TRAINING_PNG = os.path.join(IMG_DIR, 'training-set-accuracy.png')
     TESTING_PNG = os.path.join(IMG_DIR, 'testing-set-accuracy.png')
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
+    SESSION_KEY = '3iLgwcbINAoUKAZtovmnrsSkDYUEzza0'
 
 
 class DevelopmentConfig(BaseConfig):
