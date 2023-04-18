@@ -2,7 +2,7 @@ import numpy as np
 import torch.optim
 from model import Model
 import pandas as pd
-from pre_dataloader import Pre_Dataloader
+from pre_dataloader import pre_data_loader
 
 batch_size = 128
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -12,7 +12,7 @@ model.to(device)
 model.load_state_dict(torch.load('cnn_lstm.pth')) #这里根据模型结构，调用存储的模型参数
 model.eval()
 
-pre_loader = Pre_Dataloader(batch_size)
+pre_loader = pre_data_loader(batch_size)
 with torch.no_grad():
     non_zero_indices = []
     prediction = []

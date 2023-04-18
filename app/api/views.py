@@ -13,6 +13,8 @@ import torch.optim
 from flask import request, current_app, jsonify, g, session
 from matplotlib import pyplot as plt
 from torch import nn
+import pandas as pd
+import numpy as np
 
 from app.api import api
 from app.common.db import db
@@ -22,6 +24,7 @@ from app.model.model import Model
 from app.model.models import TrainSetModel, TestSetModel
 from app.model.test_dataloader import test_data_loader
 from app.model.train_dataloader import train_data_loader
+from app.model.pre_dataloader import pre_data_loader
 
 status = False
 
@@ -148,11 +151,49 @@ def get_test_set():
     return {'code': '0000', 'data': data, 'message': 'Success'}
 
 
-@api.route('/identify-file')
+@api.route('/identify-file', methods=['POST'])
 def identify_file():
     """
 
     :return:
     """
     file = request.files.get('file')
-    file.save(os.path.join(current_app.config['FILE_DIR'], 'tmp-identify.csv'))
+    filepath = os.path.join(current_app.config['FILE_DIR'], 'tmp-identify.csv')
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    file.save(filepath)
+    data_loader = pre_data_loader(filepath, 128)
+    with torch.no_grad():
+        non_zero_indices = []
+        prediction = []
+        for i, x in enumerate(data_loader):
+            x = x[0].to(current_app.device)
+            y_pred = current_app.model(x)
+            pred = torch.argmax(y_pred, dim=1)
+            prediction = pred.cpu().numpy()
+            prediction_error = np.array([x for x in prediction if x != 0])
+
+            non_zero_idx = torch.nonzero(pred)
+            non_zero_indices.append(non_zero_idx.cpu().numpy() + i * data_loader.batch_size)
+
+        # 合并所有预测结果
+        non_zero_indices = np.concatenate(non_zero_indices, axis=0)
+
+        # 获取预测值不为0的表格行号
+        non_zero_row_indices = non_zero_indices[prediction[non_zero_indices] != 0]
+
+    df = pd.read_csv(filepath)
+    new_df = df.loc[non_zero_row_indices]
+    for item in prediction_error:
+        new_df['class'] = item
+    bad_data_path = os.path.join(current_app.config['FILE_DIR'], 'tmp-bad-data.csv')
+    if os.path.exists(bad_data_path):
+        os.remove(bad_data_path)
+    new_df.to_csv(bad_data_path)
+    return jsonify({'code': '0000', 'message': 'success', 'data': new_df.values.tolist()[:100]})
+
+
+@api.route('/save-to-database')
+def save_to_database():
+    bad_data_path = os.path.join(current_app.config['FILE_DIR'], 'tmp-bad-data.csv')
+    df = pd.read_csv(bad_data_path)

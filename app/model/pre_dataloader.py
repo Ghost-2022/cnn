@@ -4,9 +4,9 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import MinMaxScaler
 
-def Pre_Dataloader(batch_size):
+def pre_data_loader(file_path, batch_size):
     # 预测数据
-    pre_df = pd.read_csv("../new_data/new_data_7.csv").values
+    pre_df = pd.read_csv(file_path).values
 
     X_pre = pre_df[:, 0:41]
 
