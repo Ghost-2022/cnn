@@ -23,7 +23,7 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = r'mysql://root:123456@127.0.0.1:3306/cnn?charset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = r'mysql://lichunxu:TT4RVhRjlJUwjEj*@146.56.219.98:3506/cnn?charset=utf8mb4'
 
 
 class ProductionConfig(BaseConfig):

@@ -21,12 +21,13 @@ from app.common.db import db
 from app.model import train_model
 from app.model.fit import fit
 from app.model.model import Model
-from app.model.models import TrainSetModel, TestSetModel
+from app.model.models import TrainSetModel, TestSetModel, BadDataset
 from app.model.test_dataloader import test_data_loader
 from app.model.train_dataloader import train_data_loader
 from app.model.pre_dataloader import pre_data_loader
 
 status = False
+
 
 def train_model(batch_size, learning_rate, epochs, app_context):
     with app_context:
@@ -35,7 +36,8 @@ def train_model(batch_size, learning_rate, epochs, app_context):
         warnings.simplefilter(action='ignore', category=RuntimeWarning)
         torch.manual_seed(2020)
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        train_loader = train_data_loader(batch_size, os.path.join(current_app.config['FILE_DIR'], "kddcup.data_train.csv"))
+        train_loader = train_data_loader(batch_size,
+                                         os.path.join(current_app.config['FILE_DIR'], "kddcup.data_train.csv"))
         test_loader = test_data_loader(batch_size, os.path.join(current_app.config['FILE_DIR'], "kddcup.data_test.csv"))
         model = Model()
         model.to(device)
@@ -49,7 +51,8 @@ def train_model(batch_size, learning_rate, epochs, app_context):
 
         # 训练 迭代epoch次
         for epoch in range(epochs):
-            epoch_loss, epoch_acc, test_epoch_loss, test_epoch_acc = fit(epoch, model, train_loader, test_loader, loss_fn,
+            epoch_loss, epoch_acc, test_epoch_loss, test_epoch_acc = fit(epoch, model, train_loader, test_loader,
+                                                                         loss_fn,
                                                                          optimizer, device)
             train_loss.append(epoch_loss)
             train_acc.append(epoch_acc)
@@ -190,10 +193,118 @@ def identify_file():
     if os.path.exists(bad_data_path):
         os.remove(bad_data_path)
     new_df.to_csv(bad_data_path)
-    return jsonify({'code': '0000', 'message': 'success', 'data': new_df.values.tolist()[:100]})
+    return jsonify({'code': '0000', 'message': 'success'})
+
+
+@api.route('/get-bad-data')
+def get_bad_data():
+    page = int(request.args.get('pageIndex', 1))
+    count = int(request.args.get('pageSize', 10))
+    bad_data_path = os.path.join(current_app.config['FILE_DIR'], 'tmp-bad-data.csv')
+    if not os.path.exists(bad_data_path):
+        return jsonify({'code': -1, 'message': 'error'})
+    df = pd.read_csv(bad_data_path)
+    data = {
+        'total': df.shape[0],
+        'list': [
+        dict(duration=item[0],
+             protocol_type=item[1],
+             service=item[2],
+             flag=item[3],
+             src_bytes=item[4],
+             dst_bytes=item[5],
+             land=item[6],
+             wrong_fragment=item[7],
+             urgent=item[8],
+             hot=item[9],
+             num_failed_logins=item[10],
+             logged_in=item[11],
+             num_compromised=item[12],
+             root_shell=item[13],
+             su_attempted=item[14],
+             num_root=item[15],
+             num_file_creations=item[16],
+             num_shells=item[17],
+             num_access_files=item[18],
+             num_outbound_cmds=item[19],
+             is_hot_login=item[20],
+             is_guest_login=item[21],
+             count=item[22],
+             srv_count=item[23],
+             serror_rate=item[24],
+             srv_serror_rate=item[25],
+             rerror_rate=item[26],
+             srv_rerror_rate=item[27],
+             same_srv_rate=item[28],
+             diff_srv_rate=item[29],
+             srv_diff_host_rate=item[30],
+             dst_host_count=item[31],
+             dst_host_srv_count=item[32],
+             dst_host_same_srv_rate=item[33],
+             dst_host_diff_srv_rate=item[34],
+             dst_host_same_src_port_rate=item[35],
+             dst_host_srv_diff_host_rate=item[36],
+             dst_host_serror_rate=item[37],
+             dst_host_srv_serror_rate=item[38],
+             dst_host_rerror_rate=item[39],
+             dst_host_srv_rerror_rate=item[40],
+             bad_class=item[41]) for item in df.values.tolist()[(page-1)*count:(page*count+1)]
+    ]
+    }
+    return jsonify({'code': '0000', 'message': 'success', 'data': data})
 
 
 @api.route('/save-to-database')
 def save_to_database():
     bad_data_path = os.path.join(current_app.config['FILE_DIR'], 'tmp-bad-data.csv')
     df = pd.read_csv(bad_data_path)
+    data = [
+        dict(duration=item[0],
+             protocol_type=item[1],
+             service=item[2],
+             flag=item[3],
+             src_bytes=item[4],
+             dst_bytes=item[5],
+             land=item[6],
+             wrong_fragment=item[7],
+             urgent=item[8],
+             hot=item[9],
+             num_failed_logins=item[10],
+             logged_in=item[11],
+             num_compromised=item[12],
+             root_shell=item[13],
+             su_attempted=item[14],
+             num_root=item[15],
+             num_file_creations=item[16],
+             num_shells=item[17],
+             num_access_files=item[18],
+             num_outbound_cmds=item[19],
+             is_hot_login=item[20],
+             is_guest_login=item[21],
+             count=item[22],
+             srv_count=item[23],
+             serror_rate=item[24],
+             srv_serror_rate=item[25],
+             rerror_rate=item[26],
+             srv_rerror_rate=item[27],
+             same_srv_rate=item[28],
+             diff_srv_rate=item[29],
+             srv_diff_host_rate=item[30],
+             dst_host_count=item[31],
+             dst_host_srv_count=item[32],
+             dst_host_same_srv_rate=item[33],
+             dst_host_diff_srv_rate=item[34],
+             dst_host_same_src_port_rate=item[35],
+             dst_host_srv_diff_host_rate=item[36],
+             dst_host_serror_rate=item[37],
+             dst_host_srv_serror_rate=item[38],
+             dst_host_rerror_rate=item[39],
+             dst_host_srv_rerror_rate=item[40],
+             bad_class=item[41]) for item in df.values.tolist()
+    ]
+    try:
+        db.session.execute(BadDataset.__table__.insert(), data)
+    except Exception:
+        return jsonify({'code': -1, 'message': 'error'})
+    else:
+        return jsonify({'code': '0000', 'message': 'success'})
