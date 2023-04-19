@@ -24,7 +24,7 @@ migrate = Migrate()
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='static/')
     env = os.getenv('APP_ENV', 'development')
     app.config.from_object(env_map.get(env))
 
