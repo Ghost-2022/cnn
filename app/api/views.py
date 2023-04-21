@@ -65,26 +65,30 @@ def train_model(batch_size, learning_rate, epochs, app_context):
             # 保存训练好的模型
             torch.save(model.state_dict(), os.path.join(current_app.config['FILE_DIR'], 'cnn_lstm.pth'))
 
+            fig, ax = plt.subplots()
             # 训练集 平均损失变化图像
-            plt.plot(range(epochs), train_loss)
-            plt.xlabel('epochs')
-            plt.ylabel('cost')
-            plt.title('Average loss function change')
-            plt.savefig(os.path.join(current_app.config['IMG_DIR'], 'avg-loss.png'))
+            ax.plot(range(epochs), train_loss)
+            ax.set_xlabel('epochs')
+            ax.set_ylabel('cost')
+            ax.set_title('Average loss function change')
+            fig.savefig(os.path.join(current_app.config['IMG_DIR'], 'avg-loss.png'))
 
+
+            fig, ax = plt.subplots()
             # 训练集 准确率变化图像
-            plt.plot(range(epochs), train_acc)
-            plt.xlabel('epochs')
-            plt.ylabel('accuracy')
-            plt.title('training set accuracy')
-            plt.savefig(os.path.join(current_app.config['IMG_DIR'], 'training-set-accuracy.png'))
+            ax.plot(range(epochs), train_acc)
+            ax.set_xlabel('epochs')
+            ax.set_ylabel('accuracy')
+            ax.set_title('training set accuracy')
+            fig.savefig(os.path.join(current_app.config['IMG_DIR'], 'training-set-accuracy.png'))
 
+            fig, ax = plt.subplots()
             # 测试集 准确率变化图像
-            plt.plot(range(epochs), test_acc)
-            plt.xlabel('epochs')
-            plt.ylabel('accuracy')
-            plt.title('testing set accuracy')
-            plt.savefig(os.path.join(current_app.config['IMG_DIR'], 'testing-set-accuracy.png'))
+            ax.plot(range(epochs), test_acc)
+            ax.set_xlabel('epochs')
+            ax.set_ylabel('accuracy')
+            ax.set_title('testing set accuracy')
+            fig.savefig(os.path.join(current_app.config['IMG_DIR'], 'testing-set-accuracy.png'))
 
     except Exception as e:
         print(traceback.format_exc())
@@ -181,12 +185,17 @@ def identify_file():
         os.remove(filepath)
     file.save(filepath)
     data_loader = pre_data_loader(filepath, 128)
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = Model()  # 这里需要重新模型结构，My_model
+    model.to(device)
+    model.load_state_dict(torch.load(os.path.join(current_app.config['FILE_DIR'], 'cnn_lstm.pth')))
+    model.eval()
     with torch.no_grad():
         non_zero_indices = []
         prediction = []
         for i, x in enumerate(data_loader):
-            x = x[0].to(current_app.device)
-            y_pred = current_app.model(x)
+            x = x[0].to(device)
+            y_pred = model(x)
             pred = torch.argmax(y_pred, dim=1)
             prediction = pred.cpu().numpy()
             prediction_error = np.array([x for x in prediction if x != 0])
@@ -319,7 +328,8 @@ def save_to_database():
     ]
     try:
         db.session.execute(BadDataset.__table__.insert(), data)
-    except Exception:
+    except Exception as e:
+        print(e)
         return jsonify({'code': -1, 'message': 'error'})
     else:
         return jsonify({'code': '0000', 'message': 'success'})

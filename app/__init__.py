@@ -32,12 +32,7 @@ def create_app():
     migrate.init_app(app, db)
 
     CORS(app, resources={r"/api/*": {"origins": "*"}})
-    app.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    app.model = Model()  # 这里需要重新模型结构，My_model
-    app.model.to(app.device)
-    app.model.load_state_dict(torch.load(os.path.join(app.config['FILE_DIR'], 'cnn_lstm.pth')))
-    app.model.eval()
 
     app.register_blueprint(api, url_prefix='/api/')
     return app
