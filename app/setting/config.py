@@ -18,12 +18,12 @@ class BaseConfig:
     TRAINING_PNG = os.path.join(IMG_DIR, 'training-set-accuracy.png')
     TESTING_PNG = os.path.join(IMG_DIR, 'testing-set-accuracy.png')
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
-    SESSION_KEY = '3iLgwcbINAoUKAZtovmnrsSkDYUEzza0'
+    SALT = '3iLgwcbINAoUKAZtovmnrsSkDYUEzza0'
 
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = r'mysql://root:123456@127.0.0.1:3206/cnn?charset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = r'mysql://lichunxu:TT4RVhRjlJUwjEj*@146.56.219.98:3506/cnn?charset=utf8mb4'
 
 
 class ProductionConfig(BaseConfig):

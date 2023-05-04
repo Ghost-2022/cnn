@@ -5,6 +5,7 @@
     @Auth: Jacob
     @Desc:
 """
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.common.db import db
 
@@ -163,3 +164,16 @@ class BadDataset(db.Model, QueryMixin):
 
     def __repr__(self):  # 相当于toString
         return '<TrainSet %r>' % self.id
+
+
+class UserModel(db.Model, QueryMixin):
+    __tablename__ = 'user'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255))
+    password = db.Column(db.String(255))
+
+    def set_password(self, password):  # 用来设置密码的方法，接受密码作为参数
+        self.password = generate_password_hash(password)  # 将生成的密码保持到对应字段
+
+    def validate_password(self, password):  # 用于验证密码的方法，接受密码作为参数
+        return check_password_hash(self.password, password)  # 返回布尔值

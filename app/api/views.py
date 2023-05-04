@@ -19,10 +19,12 @@ import numpy as np
 
 from app.api import api
 from app.common.db import db
+from app.common.utils import create_token
+from app.common.decorator import login_required
 from app.model import train_model
 from app.model.fit import fit
 from app.model.model import Model
-from app.model.models import TrainSetModel, TestSetModel, BadDataset
+from app.model.models import TrainSetModel, TestSetModel, BadDataset, UserModel
 from app.model.test_dataloader import test_data_loader
 from app.model.train_dataloader import train_data_loader
 from app.model.pre_dataloader import pre_data_loader
@@ -41,7 +43,8 @@ def train_model(batch_size, learning_rate, epochs, app_context):
             device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
             train_loader = train_data_loader(batch_size,
                                              os.path.join(current_app.config['FILE_DIR'], "kddcup.data_train.csv"))
-            test_loader = test_data_loader(batch_size, os.path.join(current_app.config['FILE_DIR'], "kddcup.data_test.csv"))
+            test_loader = test_data_loader(batch_size,
+                                           os.path.join(current_app.config['FILE_DIR'], "kddcup.data_test.csv"))
             model = Model()
             model.to(device)
             loss_fn = nn.CrossEntropyLoss()
@@ -73,7 +76,6 @@ def train_model(batch_size, learning_rate, epochs, app_context):
             ax.set_title('Average loss function change')
             fig.savefig(os.path.join(current_app.config['IMG_DIR'], 'avg-loss.png'))
 
-
             fig, ax = plt.subplots()
             # 训练集 准确率变化图像
             ax.plot(range(epochs), train_acc)
@@ -95,7 +97,9 @@ def train_model(batch_size, learning_rate, epochs, app_context):
     finally:
         status = False
 
+
 @api.route('/train', methods=['POST'])
+@login_required
 def train():
     rep_data = request.json
     batch_size = rep_data.get('batchSize')
@@ -119,11 +123,13 @@ def train():
 
 
 @api.route('/get-train-status')
+@login_required
 def get_train_status():
     return {'code': '0000', 'message': 'Success', 'data': train_list}
 
 
 @api.route('/get-train-result')
+@login_required
 def get_train_result():
     """
 
@@ -142,6 +148,7 @@ def get_train_result():
 
 
 @api.route('/get-train-set')
+@login_required
 def get_train_set():
     """
 
@@ -160,6 +167,7 @@ def get_train_set():
 
 
 @api.route('/get-test-set')
+@login_required
 def get_test_set():
     page = int(request.args.get('pageIndex', 1))
     count = int(request.args.get('pageSize', 10))
@@ -174,6 +182,7 @@ def get_test_set():
 
 
 @api.route('/identify-file', methods=['POST'])
+@login_required
 def identify_file():
     """
 
@@ -221,6 +230,7 @@ def identify_file():
 
 
 @api.route('/get-bad-data')
+@login_required
 def get_bad_data():
     page = int(request.args.get('pageIndex', 1))
     count = int(request.args.get('pageSize', 10))
@@ -279,6 +289,7 @@ def get_bad_data():
 
 
 @api.route('/save-to-database')
+@login_required
 def save_to_database():
     bad_data_path = os.path.join(current_app.config['FILE_DIR'], 'tmp-bad-data.csv')
     df = pd.read_csv(bad_data_path)
@@ -333,3 +344,40 @@ def save_to_database():
         return jsonify({'code': -1, 'message': 'error'})
     else:
         return jsonify({'code': '0000', 'message': 'success'})
+
+
+@api.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if not (username and password):
+        return jsonify({'code': '0001', 'message': 'Please check username and password'})
+    user = UserModel.query.filter_by(username=username).first()
+    if not user or not user.validate_password(password):
+        return {"code": '0001', "message": "Wrong user or password"}
+    else:
+        token = create_token(username, password)
+        return {"code": '0000', "message": "success", "data": {"token": token}}
+
+
+@api.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if not (username and password):
+        return jsonify({'code': '0001', 'message': 'Please check username and password'})
+
+    try:
+        user = UserModel()
+        user.username = username
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        db.session.rollback()
+        return jsonify({'code': '0001', 'message': 'Failed to create user'})
+    else:
+        return jsonify({'code': '0000', 'message': 'User created successfully'})
